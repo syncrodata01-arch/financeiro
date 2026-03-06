@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financeiro Completo Pro</title>
+    <title>Elite Pay - Financeiro Cloud</title>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <style>
         :root {
             --primary: #0077b6; --azul-bb: #e0f2f7; 
@@ -14,35 +18,24 @@
         body { font-family: 'Inter', sans-serif; background-color: var(--azul-bb); margin: 0; padding: 15px; color: var(--text); }
         .container { max-width: 1200px; margin: 0 auto; }
         .hidden { display: none; }
-        
-        /* Cards */
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px; border-radius: 15px; }
-        
         .resumo-card { padding: 15px; border-radius: 12px; border-top: 4px solid var(--primary); background: white; text-align: center;}
         .status-pendente { color: var(--danger); font-weight: bold; }
         .status-pago { color: var(--success); font-weight: bold; }
         .linha-paga { opacity: 0.5; background-color: #f0fdf4; }
-
-        /* Devedores */
         .devedores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .devedor-item { background: white; padding: 15px; border-radius: 12px; border-left: 5px solid var(--danger); position: relative; }
         .btn-zap-relatorio { background: #25d366; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.7rem; margin-top: 10px; width: 100%; }
-
-        /* Form e Layout */
         .layout { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
         input, select { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 8px; }
         .btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; }
         .btn-primary { background: var(--primary); color: white; }
-        .btn-excel { background: #1d6f42; color: white; margin-bottom: 5px; }
-        
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background: white; border-radius: 10px; overflow: hidden; }
         th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 0.75rem; color: #64748b; }
         td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
-
         .check-circle { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ddd; cursor: pointer; display: inline-block; vertical-align: middle; }
         .check-circle.pago { background: var(--success); border-color: var(--success); }
-
         @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -50,10 +43,9 @@
 
 <div class="container">
     <div id="tela-login" class="card" style="max-width:400px; margin: 80px auto; text-align: center;">
-        <h2 style="color:var(--primary)">Financeiro Completo</h2>
-        <input type="email" id="email-login" placeholder="E-mail">
-        <input type="password" id="senha-login" placeholder="Senha">
-        <button class="btn btn-primary" onclick="autenticar()">Entrar / Cadastrar</button>
+        <h2 style="color:var(--primary)">💰 Elite Pay Cloud</h2>
+        <p>Seu financeiro em qualquer lugar</p>
+        <button class="btn btn-primary" onclick="loginGoogle()">Entrar com Google</button>
     </div>
 
     <div id="tela-app" class="hidden">
@@ -63,7 +55,7 @@
                 <select id="selectMesAno" onchange="renderizar()" style="margin:0; width:180px"></select>
                 <button onclick="mudarMes(1)">▶</button>
             </div>
-            <button class="btn" style="width:auto; background:var(--danger); color:white" onclick="location.reload()">Sair</button>
+            <button class="btn" style="width:auto; background:var(--danger); color:white" onclick="auth.signOut().then(()=>location.reload())">Sair</button>
         </header>
 
         <div class="devedores-grid">
@@ -76,32 +68,18 @@
                 <div id="displayTotal" class="status-pendente" style="font-size:1.2rem">R$ 0,00</div>
             </div>
             <div class="resumo-card">
-                <small>SALDO LIVRE (EU)</small>
+                <small>SALDO LIVRE</small>
                 <div id="displaySaldo" style="font-size:1.2rem; font-weight:bold">R$ 0,00</div>
             </div>
         </div>
 
-        <h3>🚨 Pendências de Terceiros (Mês Atual)</h3>
-        <div id="painelDevedores" class="devedores-grid"></div>
-
         <div class="layout">
             <section>
-                <div class="card" style="display:flex; gap:10px; padding:10px">
-                    <button class="btn btn-excel" onclick="exportarExcel()">Baixar Excel 📥</button>
-                    <button class="btn" style="background:#444; color:white" onclick="document.getElementById('importFile').click()">Importar Excel 📤</button>
-                    <input type="file" id="importFile" class="hidden" onchange="importarExcel(event)">
-                </div>
-
-                <h4>📋 Meus Gastos (Particular)</h4>
+                <h4>📋 Meus Gastos / Terceiros</h4>
+                <div id="painelDevedores" class="devedores-grid"></div>
                 <table>
-                    <thead><tr><th>Status</th><th>Descrição</th><th>Valor</th><th>Ações</th></tr></thead>
-                    <tbody id="listaMeusGastos"></tbody>
-                </table>
-
-                <h4>👥 Gastos de Terceiros</h4>
-                <table>
-                    <thead><tr><th>Status</th><th>Descrição</th><th>Responsável</th><th>Valor</th><th>Ações</th></tr></thead>
-                    <tbody id="listaGastosTerceiros"></tbody>
+                    <thead><tr><th>Status</th><th>Descrição</th><th>Resp.</th><th>Valor</th><th>Ações</th></tr></thead>
+                    <tbody id="listaGastos"></tbody>
                 </table>
             </section>
 
@@ -109,249 +87,27 @@
                 <div class="card">
                     <h3>➕ Novo Lançamento</h3>
                     <form id="formGasto">
-                        <label>Descrição</label>
                         <input type="text" id="desc" required placeholder="Ex: Internet">
-                        <label>Valor</label>
-                        <input type="number" step="0.01" id="valor" required>
+                        <input type="number" step="0.01" id="valor" required placeholder="R$ 0,00">
                         <label>Responsável</label>
                         <select id="responsavel"></select>
-                        <label>Mês de Início</label>
                         <input type="month" id="mesInicio" required>
-                        <label>Tipo</label>
                         <select id="tipoGasto" onchange="document.getElementById('divParcelas').classList.toggle('hidden', this.value !== 'parcelado')">
                             <option value="unico">Pagamento Único</option>
                             <option value="parcelado">Parcelado</option>
                         </select>
                         <div id="divParcelas" class="hidden">
-                            <label>Nº de Parcelas</label>
-                            <input type="number" id="numParcelas" value="2">
+                            <input type="number" id="numParcelas" placeholder="Qtd Parcelas" value="1">
                         </div>
-                        <button type="submit" class="btn btn-primary">Cadastrar</button>
+                        <button type="submit" class="btn btn-primary">Salvar na Nuvem</button>
                     </form>
                     <hr>
-                    <h3>👥 Agenda de Contatos</h3>
+                    <h3>👥 Agenda</h3>
                     <input id="nome-contato" placeholder="Nome">
                     <input id="tel-contato" placeholder="DDD + Telefone">
-                    <button class="btn btn-primary" style="background:#00b4d8" onclick="salvarContato()">Salvar na Agenda</button>
+                    <button class="btn" style="background:#00b4d8; color:white" onclick="salvarContato()">Salvar Contato</button>
                     <div id="lista-agenda" style="margin-top:10px; max-height: 150px; overflow-y: auto;"></div>
                 </div>
             </aside>
         </div>
     </div>
-</div>
-
-<script>
-    let db = JSON.parse(localStorage.getItem('financeiro_pro_v5')) || { usuarios: {} };
-    let currentUser = null;
-
-    // Configuração do Calendário
-    const selMes = document.getElementById('selectMesAno');
-    const agora = new Date();
-    for(let i = -12; i <= 24; i++) {
-        let d = new Date(agora.getFullYear(), agora.getMonth() + i, 1);
-        let val = d.toISOString().substring(0,7);
-        selMes.add(new Option(d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'}), val));
-    }
-    selMes.value = agora.toISOString().substring(0,7);
-    document.getElementById('mesInicio').value = agora.toISOString().substring(0,7);
-
-    function autenticar() {
-        const email = document.getElementById('email-login').value;
-        const senha = document.getElementById('senha-login').value;
-        if(!email || !senha) return alert("Preencha os campos!");
-
-        if(!db.usuarios[email]) {
-            db.usuarios[email] = { senha, gastos: [], contatos: [{nome:"Eu", tel:""}], salarios: {} };
-        } else if(db.usuarios[email].senha !== senha) {
-            return alert("Senha incorreta!");
-        }
-        currentUser = email;
-        document.getElementById('tela-login').classList.add('hidden');
-        document.getElementById('tela-app').classList.remove('hidden');
-        atualizarAgenda();
-        renderizar();
-    }
-
-    function salvarContato() {
-        const nome = document.getElementById('nome-contato').value.trim();
-        const tel = document.getElementById('tel-contato').value.trim();
-        if(!nome) return;
-        db.usuarios[currentUser].contatos.push({nome, tel});
-        localStorage.setItem('financeiro_pro_v5', JSON.stringify(db));
-        document.getElementById('nome-contato').value = "";
-        document.getElementById('tel-contato').value = "";
-        atualizarAgenda();
-    }
-
-    function atualizarAgenda() {
-        const sel = document.getElementById('responsavel');
-        const lista = document.getElementById('lista-agenda');
-        sel.innerHTML = ""; lista.innerHTML = "";
-        db.usuarios[currentUser].contatos.forEach((c, idx) => {
-            sel.add(new Option(c.nome, c.nome));
-            lista.innerHTML += `<div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:5px; border-bottom:1px solid #eee">
-                ${c.nome} <span style="color:red; cursor:pointer" onclick="removerContato(${idx})">✕</span>
-            </div>`;
-        });
-    }
-
-    function removerContato(idx) {
-        if(confirm("Remover este contato?")) {
-            db.usuarios[currentUser].contatos.splice(idx, 1);
-            localStorage.setItem('financeiro_pro_v5', JSON.stringify(db));
-            atualizarAgenda();
-        }
-    }
-
-    document.getElementById('formGasto').onsubmit = function(e) {
-        e.preventDefault();
-        const desc = document.getElementById('desc').value;
-        const valor = parseFloat(document.getElementById('valor').value);
-        const resp = document.getElementById('responsavel').value;
-        const tipo = document.getElementById('tipoGasto').value;
-        const mesStart = document.getElementById('mesInicio').value;
-        const idBase = Date.now();
-
-        if(tipo === 'parcelado') {
-            const q = parseInt(document.getElementById('numParcelas').value);
-            for(let i=0; i<q; i++) {
-                let d = new Date(mesStart + "-02");
-                d.setMonth(d.getMonth() + i);
-                db.usuarios[currentUser].gastos.push({
-                    id: idBase + i, desc: `${desc} [${i+1}/${q}]`, 
-                    valor: valor, resp, mesAno: d.toISOString().substring(0,7), pago: false
-                });
-            }
-        } else {
-            db.usuarios[currentUser].gastos.push({
-                id: idBase, desc, valor, resp, mesAno: mesStart, pago: false
-            });
-        }
-        localStorage.setItem('financeiro_pro_v5', JSON.stringify(db));
-        renderizar();
-        e.target.reset();
-        document.getElementById('mesInicio').value = selMes.value;
-    };
-
-    function renderizar() {
-        const mesFiltro = selMes.value;
-        const listaEu = document.getElementById('listaMeusGastos');
-        const listaTerceiros = document.getElementById('listaGastosTerceiros');
-        const painelDev = document.getElementById('painelDevedores');
-        const user = db.usuarios[currentUser];
-        
-        listaEu.innerHTML = ""; listaTerceiros.innerHTML = ""; painelDev.innerHTML = "";
-        let tGeral = 0, tEu = 0, devedores = {};
-
-        user.gastos.filter(g => g.mesAno === mesFiltro).forEach(g => {
-            tGeral += g.valor;
-            const linhaHtml = `
-                <tr class="${g.pago ? 'linha-paga' : ''}">
-                    <td><div class="check-circle ${g.pago ? 'pago' : ''}" onclick="togglePago(${g.id})"></div></td>
-                    <td>${g.desc}</td>
-                    ${g.resp !== 'Eu' ? `<td>${g.resp}</td>` : ''}
-                    <td class="${g.pago ? 'status-pago' : 'status-pendente'}">R$ ${g.valor.toFixed(2)}</td>
-                    <td><button onclick="removerGasto(${g.id})" style="border:none; color:#ccc; background:none; cursor:pointer">✕</button></td>
-                </tr>`;
-
-            if(g.resp === "Eu") {
-                tEu += g.valor;
-                listaEu.innerHTML += linhaHtml;
-            } else {
-                listaTerceiros.innerHTML += linhaHtml;
-                if(!g.pago) {
-                    devedores[g.resp] = (devedores[g.resp] || 0) + g.valor;
-                }
-            }
-        });
-
-        // Painel de Devedores e Envio de Relatório
-        Object.keys(devedores).forEach(nome => {
-            painelDev.innerHTML += `
-                <div class="devedor-item">
-                    <small>${nome.toUpperCase()}</small><br>
-                    <strong>R$ ${devedores[nome].toFixed(2)}</strong>
-                    <button class="btn-zap-relatorio" onclick="enviarRelatorio('${nome}')">Enviar Relatório de ${selMes.options[selMes.selectedIndex].text}</button>
-                </div>`;
-        });
-
-        document.getElementById('displayTotal').innerText = `R$ ${tGeral.toFixed(2)}`;
-        document.getElementById('inputSalario').value = user.salarios[mesFiltro] || 0;
-        document.getElementById('displaySaldo').innerText = `R$ ${((user.salarios[mesFiltro] || 0) - tEu).toFixed(2)}`;
-    }
-
-    function enviarRelatorio(nome) {
-        const mesTxt = selMes.options[selMes.selectedIndex].text;
-        const user = db.usuarios[currentUser];
-        const contato = user.contatos.find(c => c.nome === nome);
-        
-        const gastos = user.gastos.filter(g => g.resp === nome && g.mesAno === selMes.value && !g.pago);
-        let total = 0;
-        let listaMsg = `*Relatório de Dívidas - ${mesTxt}*%0A%0A`;
-        
-        gastos.forEach(g => {
-            listaMsg += `▪️ ${g.desc}: *R$ ${g.valor.toFixed(2)}*%0A`;
-            total += g.valor;
-        });
-        
-        listaMsg += `%0A💰 *Total Pendente: R$ ${total.toFixed(2)}*`;
-        
-        if(!contato || !contato.tel) {
-            alert("Telefone não cadastrado para " + nome);
-            window.open(`https://api.whatsapp.com/send?text=${listaMsg}`);
-        } else {
-            window.open(`https://api.whatsapp.com/send?phone=55${contato.tel}&text=${listaMsg}`);
-        }
-    }
-
-    function togglePago(id) {
-        const g = db.usuarios[currentUser].gastos.find(x => x.id === id);
-        g.pago = !g.pago;
-        localStorage.setItem('financeiro_pro_v5', JSON.stringify(db));
-        renderizar();
-    }
-
-    function removerGasto(id) {
-        if(confirm("Excluir lançamento?")) {
-            db.usuarios[currentUser].gastos = db.usuarios[currentUser].gastos.filter(x => x.id !== id);
-            localStorage.setItem('financeiro_pro_v5', JSON.stringify(db));
-            renderizar();
-        }
-    }
-
-    function salvarSalario() {
-        db.usuarios[currentUser].salarios[selMes.value] = parseFloat(document.getElementById('inputSalario').value) || 0;
-        localStorage.setItem('financeiro_pro_v5', JSON.stringify(db));
-        renderizar();
-    }
-
-    function mudarMes(n) {
-        selMes.selectedIndex += n;
-        renderizar();
-    }
-
-    function exportarExcel() {
-        const ws = XLSX.utils.json_to_sheet(db.usuarios[currentUser].gastos);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Gastos");
-        XLSX.writeFile(wb, `financeiro_${selMes.value}.xlsx`);
-    }
-
-    function importarExcel(e) {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            const data = evt.target.result;
-            const workbook = XLSX.read(data, {type: 'binary'});
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet);
-            db.usuarios[currentUser].gastos = json;
-            localStorage.setItem('financeiro_pro_v5', JSON.stringify(db));
-            renderizar();
-            alert("Importado com sucesso!");
-        };
-        reader.readAsBinaryString(file);
-    }
-</script>
-</body>
-</html>
