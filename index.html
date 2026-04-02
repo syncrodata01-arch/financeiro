@@ -3,39 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elite Pay - Financeiro Cloud</title>
+    <title>Elite Pay - ProFinance Elite</title>
+    
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/imask"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
+
     <style>
-        :root {
-            --primary: #0077b6; --azul-bb: #e0f2f7; 
-            --success: #22c55e; --danger: #ef4444; --text: #1e293b;
-        }
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--azul-bb); margin: 0; padding: 15px; color: var(--text); }
+        :root { --primary: #0077b6; --azul-bb: #e0f2f7; --success: #22c55e; --danger: #ef4444; --text: #1e293b; }
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--azul-bb); margin: 0; padding: 10px; color: var(--text); }
         .container { max-width: 1200px; margin: 0 auto; }
         .hidden { display: none; }
         .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px; border-radius: 15px; }
-        .resumo-card { padding: 15px; border-radius: 12px; border-top: 4px solid var(--primary); background: white; text-align: center;}
-        .status-pendente { color: var(--danger); font-weight: bold; }
-        .status-pago { color: var(--success); font-weight: bold; }
-        .linha-paga { opacity: 0.5; background-color: #f0fdf4; }
-        .devedores-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .devedor-item { background: white; padding: 15px; border-radius: 12px; border-left: 5px solid var(--danger); position: relative; }
-        .btn-zap-relatorio { background: #25d366; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.7rem; margin-top: 10px; width: 100%; }
-        .layout { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
-        input, select { width: 100%; padding: 10px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 8px; }
-        .btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; }
+        
+        /* Botões Mobile-Friendly (44px min) */
+        .btn { min-height: 44px; padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; }
         .btn-primary { background: var(--primary); color: white; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background: white; border-radius: 10px; overflow: hidden; }
-        th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 0.75rem; color: #64748b; }
-        td { padding: 10px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
-        .check-circle { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #ddd; cursor: pointer; display: inline-block; vertical-align: middle; }
-        .check-circle.pago { background: var(--success); border-color: var(--success); }
+        .btn-zap { background: #25d366; color: white; text-decoration: none; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; margin-top: 10px; }
+        .btn-acao { min-width: 44px; min-height: 44px; background: none; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; }
+
+        .layout { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
+        input, select { width: 100%; padding: 12px; margin: 5px 0 15px; border: 1px solid #ddd; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 0.8rem; color: #64748b; padding: 10px; background: #f8fafc; }
+        td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
+
         @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -43,71 +39,267 @@
 
 <div class="container">
     <div id="tela-login" class="card" style="max-width:400px; margin: 80px auto; text-align: center;">
-        <h2 style="color:var(--primary)">💰 Elite Pay Cloud</h2>
-        <p>Seu financeiro em qualquer lugar</p>
+        <h2>💰 ProFinance Elite</h2>
         <button class="btn btn-primary" onclick="loginGoogle()">Entrar com Google</button>
     </div>
 
     <div id="tela-app" class="hidden">
-        <header>
-            <div style="display:flex; align-items:center; gap:10px;">
+        <header class="card" style="display:flex; justify-content: space-between; align-items: center;">
+            <div style="display:flex; gap:10px; align-items: center;">
                 <button onclick="mudarMes(-1)">◀</button>
-                <select id="selectMesAno" onchange="renderizar()" style="margin:0; width:180px"></select>
+                <select id="selectMesAno" onchange="renderizar()" style="margin:0; width:160px"></select>
                 <button onclick="mudarMes(1)">▶</button>
             </div>
-            <button class="btn" style="width:auto; background:var(--danger); color:white" onclick="auth.signOut().then(()=>location.reload())">Sair</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-acao" onclick="fazerBackup()" title="Exportar JSON">💾</button>
+                <button class="btn-acao" onclick="auth.signOut()" title="Sair">🚪</button>
+            </div>
         </header>
 
-        <div class="devedores-grid">
-            <div class="resumo-card">
-                <small>MEU SALÁRIO</small>
-                <input type="number" id="inputSalario" style="border:none; text-align:center; font-size:1.2rem; font-weight:bold" onchange="salvarSalario()">
-            </div>
-            <div class="resumo-card" style="border-top-color: var(--danger)">
-                <small>GASTOS NO MÊS</small>
-                <div id="displayTotal" class="status-pendente" style="font-size:1.2rem">R$ 0,00</div>
-            </div>
-            <div class="resumo-card">
-                <small>SALDO LIVRE</small>
-                <div id="displaySaldo" style="font-size:1.2rem; font-weight:bold">R$ 0,00</div>
-            </div>
-        </div>
-
         <div class="layout">
-            <section>
-                <h4>📋 Meus Gastos / Terceiros</h4>
-                <div id="painelDevedores" class="devedores-grid"></div>
-                <table>
-                    <thead><tr><th>Status</th><th>Descrição</th><th>Resp.</th><th>Valor</th><th>Ações</th></tr></thead>
-                    <tbody id="listaGastos"></tbody>
-                </table>
-            </section>
+            <main>
+                <div class="card" style="height: 300px;">
+                    <canvas id="graficoGastos"></canvas>
+                </div>
+
+                <div class="card">
+                    <h4>📋 Lançamentos do Mês</h4>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead><tr><th>Pago</th><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead>
+                            <tbody id="listaGastos"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <h4>⚠️ Pendências de Terceiros</h4>
+                <div id="painelDevedores" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;"></div>
+            </main>
 
             <aside>
                 <div class="card">
-                    <h3>➕ Novo Lançamento</h3>
+                    <h3>➕ Novo Gasto</h3>
                     <form id="formGasto">
-                        <input type="text" id="desc" required placeholder="Ex: Internet">
-                        <input type="number" step="0.01" id="valor" required placeholder="R$ 0,00">
+                        <input type="text" id="desc" placeholder="Descrição" required>
+                        <input type="text" id="valor" placeholder="R$ 0,00" required>
                         <label>Responsável</label>
                         <select id="responsavel"></select>
                         <input type="month" id="mesInicio" required>
-                        <select id="tipoGasto" onchange="document.getElementById('divParcelas').classList.toggle('hidden', this.value !== 'parcelado')">
-                            <option value="unico">Pagamento Único</option>
-                            <option value="parcelado">Parcelado</option>
+                        <select id="tipoGasto">
+                            <option value="fixo">Mensal (Fixo)</option>
+                            <option value="unico">Único</option>
                         </select>
-                        <div id="divParcelas" class="hidden">
-                            <input type="number" id="numParcelas" placeholder="Qtd Parcelas" value="1">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Salvar na Nuvem</button>
+                        <button type="submit" class="btn btn-primary">Salvar Lançamento</button>
                     </form>
-                    <hr>
-                    <h3>👥 Agenda</h3>
-                    <input id="nome-contato" placeholder="Nome">
-                    <input id="tel-contato" placeholder="DDD + Telefone">
+                </div>
+
+                <div class="card">
+                    <h3>👥 Gerenciar Contatos</h3>
+                    <input type="text" id="nome-contato" placeholder="Nome (Ex: Alice)">
+                    <input type="text" id="tel-contato" placeholder="DDD + Número (Só números)">
                     <button class="btn" style="background:#00b4d8; color:white" onclick="salvarContato()">Salvar Contato</button>
-                    <div id="lista-agenda" style="margin-top:10px; max-height: 150px; overflow-y: auto;"></div>
+                </div>
+
+                <div class="card">
+                    <h3>🏦 Importar OFX/CSV</h3>
+                    <input type="file" id="fileImport" accept=".csv, .xlsx, .xls" onchange="importarArquivo(this)">
                 </div>
             </aside>
         </div>
     </div>
+</div>
+
+<script>
+    // CONFIGURAÇÃO FIREBASE
+    const firebaseConfig = { /* COLOQUE SEUS DADOS AQUI */ };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    let userUid = null;
+    let myChart = null;
+    let maskValor = null;
+    let listaContatosGlobais = [];
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            userUid = user.uid;
+            document.getElementById('tela-login').classList.add('hidden');
+            document.getElementById('tela-app').classList.remove('hidden');
+            initMask();
+            popularSelectMes();
+            carregarContatos(); // Carrega contatos antes de renderizar gastos
+        } else {
+            location.reload();
+        }
+    });
+
+    function initMask() {
+        maskValor = IMask(document.getElementById('valor'), {
+            mask: 'R$ num',
+            blocks: { num: { mask: Number, thousandsSeparator: '.', padFractionalZeros: true, fractionalDigits: 2 } }
+        });
+    }
+
+    // --- GESTÃO DE CONTATOS ---
+    async function salvarContato() {
+        const nome = document.getElementById('nome-contato').value;
+        const tel = document.getElementById('tel-contato').value.replace(/\D/g, ''); // Limpa máscara
+
+        if(nome && tel) {
+            await db.collection('contatos').add({ uid: userUid, nome, tel });
+            document.getElementById('nome-contato').value = '';
+            document.getElementById('tel-contato').value = '';
+            carregarContatos();
+        }
+    }
+
+    async function carregarContatos() {
+        const snap = await db.collection('contatos').where('uid', '==', userUid).get();
+        const select = document.getElementById('responsavel');
+        select.innerHTML = '<option value="Eu">Eu</option>';
+        listaContatosGlobais = [];
+
+        snap.forEach(doc => {
+            const c = doc.data();
+            listaContatosGlobais.push(c);
+            select.add(new Option(c.nome, c.nome));
+        });
+        renderizar();
+    }
+
+    // --- RENDERIZAÇÃO E LOGICA ---
+    async function renderizar() {
+        const mesFiltro = document.getElementById('selectMesAno').value;
+        const snap = await db.collection('gastos').where('uid', '==', userUid).get();
+        const lista = document.getElementById('listaGastos');
+        const painelDev = document.getElementById('painelDevedores');
+        
+        lista.innerHTML = '';
+        painelDev.innerHTML = '';
+        let resumoGrafico = {};
+
+        snap.forEach(doc => {
+            const g = doc.data();
+            const id = doc.id;
+            
+            // Lógica de exibição (Fixo ou Único no mês correto)
+            if (g.mesInicio <= mesFiltro && (g.tipo === 'fixo' || g.mesInicio === mesFiltro)) {
+                const pago = g.pagos && g.pagos.includes(mesFiltro);
+                
+                lista.innerHTML += `
+                    <tr style="${pago ? 'opacity:0.5' : ''}">
+                        <td><input type="checkbox" ${pago ? 'checked' : ''} onchange="alternarPagamento('${id}', '${mesFiltro}')" style="width:30px; height:30px"></td>
+                        <td>${g.desc}</td>
+                        <td>R$ ${g.valor.toFixed(2)}</td>
+                        <td><button class="btn-acao" onclick="deletar('${id}')">🗑️</button></td>
+                    </tr>
+                `;
+
+                if(!pago) {
+                    resumoGrafico[g.resp] = (resumoGrafico[g.resp] || 0) + g.valor;
+                    if(g.resp !== 'Eu') {
+                        const contato = listaContatosGlobais.find(c => c.nome === g.resp);
+                        const telefone = contato ? contato.tel : "";
+                        
+                        painelDev.innerHTML += `
+                            <div class="card" style="padding:10px; text-align:center">
+                                <b>${g.resp}</b><br>R$ ${g.valor.toFixed(2)}
+                                <a class="btn btn-zap" href="https://wa.me/55${telefone}?text=${encodeURIComponent('Olá ' + g.resp + ', o valor de R$ ' + g.valor.toFixed(2) + ' de ' + g.desc + ' está pendente.')}" target="_blank">📲 Cobrar</a>
+                            </div>
+                        `;
+                    }
+                }
+            }
+        });
+        atualizarGrafico(Object.keys(resumoGrafico), Object.values(resumoGrafico));
+    }
+
+    async function alternarPagamento(id, mes) {
+        const ref = db.collection('gastos').doc(id);
+        const doc = await ref.get();
+        let pagos = doc.data().pagos || [];
+        pagos = pagos.includes(mes) ? pagos.filter(m => m !== mes) : [...pagos, mes];
+        await ref.update({ pagos });
+        renderizar();
+    }
+
+    // --- FUNÇÕES DE IMPORTAÇÃO E BACKUP ---
+    function importarArquivo(input) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+
+            json.forEach(async (l) => {
+                const desc = l.Descricao || l.Historico || l.Lancamento;
+                const valor = l.Valor || l.Quantia;
+                if(desc && valor) {
+                    await db.collection('gastos').add({
+                        uid: userUid, desc: `IMP: ${desc}`, valor: Math.abs(parseFloat(valor)),
+                        resp: 'Eu', mesInicio: document.getElementById('selectMesAno').value,
+                        tipo: 'unico', pagos: []
+                    });
+                }
+            });
+            alert("Importação concluída!");
+            renderizar();
+        };
+        reader.readAsArrayBuffer(input.files[0]);
+    }
+
+    async function fazerBackup() {
+        const snap = await db.collection('gastos').where('uid', '==', userUid).get();
+        const dados = snap.docs.map(d => d.data());
+        const blob = new Blob([JSON.stringify(dados, null, 2)], {type: 'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `backup_profinance_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+
+    function atualizarGrafico(labels, valores) {
+        const ctx = document.getElementById('graficoGastos').getContext('2d');
+        if(myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{ data: valores, backgroundColor: ['#0077b6', '#22c55e', '#ef4444', '#f59e0b', '#8b5cf6'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    // --- HELPERS ---
+    function popularSelectMes() {
+        const select = document.getElementById('selectMesAno');
+        for (let i = -12; i <= 12; i++) {
+            let d = new Date(new Date().getFullYear(), new Date().getMonth() + i, 1);
+            let v = d.toISOString().slice(0, 7);
+            select.add(new Option(v, v));
+        }
+        select.value = new Date().toISOString().slice(0, 7);
+    }
+    function mudarMes(v) { document.getElementById('selectMesAno').selectedIndex += v; renderizar(); }
+    function loginGoogle() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+    async function deletar(id) { if(confirm("Excluir?")) { await db.collection('gastos').doc(id).delete(); renderizar(); } }
+    async function salvarGasto(e) {
+        e.preventDefault();
+        const valor = parseFloat(maskValor.unmaskedValue);
+        if(valor <= 0) return alert("Valor inválido");
+        await db.collection('gastos').add({
+            uid: userUid, desc: document.getElementById('desc').value,
+            valor, resp: document.getElementById('responsavel').value,
+            mesInicio: document.getElementById('mesInicio').value,
+            tipo: document.getElementById('tipoGasto').value, pagos: []
+        });
+        document.getElementById('formGasto').reset();
+        maskValor.value = '';
+        renderizar();
+    }
+    document.getElementById('formGasto').onsubmit = salvarGasto;
+</script>
+</body>
+</html>
